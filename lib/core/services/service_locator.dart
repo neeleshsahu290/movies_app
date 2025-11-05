@@ -1,0 +1,73 @@
+import 'package:dio/dio.dart';
+import 'package:get_it/get_it.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:movies_app/core/network/api_constants.dart';
+import 'package:movies_app/core/resources/app_constants.dart';
+import 'package:movies_app/movies/data/repository/movies_repository_impl.dart';
+import 'package:movies_app/movies/domain/repository/movies_repository.dart';
+import 'package:movies_app/movies/presentation/controllers/popular_movies_bloc/popular_movies_bloc.dart';
+import 'package:movies_app/movies/presentation/controllers/top_rated_movies_bloc/top_rated_movies_bloc.dart';
+import 'package:movies_app/search/data/repository/search_repository_impl.dart';
+import 'package:movies_app/search/domain/repository/search_repository.dart';
+import 'package:movies_app/search/presentation/controllers/search_bloc/search_bloc.dart';
+import 'package:movies_app/movies/presentation/controllers/movie_details_bloc/movie_details_bloc.dart';
+import 'package:movies_app/movies/presentation/controllers/movies_bloc/movies_bloc.dart';
+import 'package:movies_app/watchlist/data/datasource/watchlist_local_data_source.dart';
+import 'package:movies_app/watchlist/data/models/watchlist_item_model.dart';
+import 'package:movies_app/watchlist/data/repository/watchlist_repository_impl.dart';
+import 'package:movies_app/watchlist/domain/repository/watchlist_repository.dart';
+import 'package:movies_app/watchlist/domain/usecases/add_watchlist_item_usecase.dart';
+import 'package:movies_app/watchlist/domain/usecases/is_bookmarked_usecase.dart';
+import 'package:movies_app/watchlist/domain/usecases/get_watchlist_items_usecase.dart';
+import 'package:movies_app/watchlist/domain/usecases/remove_watchlist_item_usecase.dart';
+import 'package:movies_app/watchlist/presentation/controllers/watchlist_bloc/watchlist_bloc.dart';
+
+final sl = GetIt.instance;
+
+class ServiceLocator {
+  ServiceLocator._();
+
+  static void init() {
+    sl.registerLazySingleton<Dio>(
+      () => Dio(
+        BaseOptions(
+          baseUrl: ApiConstants.apiEndpoint,
+          headers: {'Authorization': 'Bearer ${AppConstants.appToken}'},
+        ),
+      ),
+    );
+
+    sl.registerLazySingleton<Box<WatchlistItemModel>>(
+      () => Hive.box<WatchlistItemModel>('items'),
+    );
+
+    sl.registerLazySingleton<WatchlistLocalDataSource>(
+      () => WatchlistLocalDataSourceImpl(sl()),
+    );
+
+    // Repository
+    sl.registerLazySingleton<MoviesRespository>(
+      () => MoviesRepositoryImpl(sl()),
+    );
+    sl.registerLazySingleton<SearchRepository>(
+      () => SearchRepositoryImpl(sl()),
+    );
+    sl.registerLazySingleton<WatchlistRepository>(
+      () => WatchListRepositoryImpl(sl()),
+    );
+
+    // Use Cases
+    sl.registerLazySingleton(() => GetWatchlistItemsUseCase(sl()));
+    sl.registerLazySingleton(() => AddWatchlistItemUseCase(sl()));
+    sl.registerLazySingleton(() => RemoveWatchlistItemUseCase(sl()));
+    sl.registerLazySingleton(() => IsBookmarkedUseCase(sl()));
+
+    // Bloc
+    sl.registerFactory(() => MoviesBloc(sl()));
+    sl.registerFactory(() => MovieDetailsBloc(sl()));
+    sl.registerFactory(() => PopularMoviesBloc(sl()));
+    sl.registerFactory(() => TopRatedMoviesBloc(sl()));
+    sl.registerFactory(() => SearchBloc(sl()));
+    sl.registerFactory(() => WatchlistBloc(sl(), sl(), sl(), sl()));
+  }
+}
